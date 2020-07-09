@@ -62,7 +62,7 @@ private:
   int m_verbosity;
   int m_bx_mask_default;
 
-  std::vector<std::vector<int> > m_initialPrescaleFactorsAlgoTrig;
+  std::vector<std::vector<float> > m_initialPrescaleFactorsAlgoTrig;
   std::vector<unsigned int> m_initialTriggerMaskAlgoTrig;
   std::vector<int> m_initialTriggerMaskVetoAlgoTrig;
   std::map<int, std::vector<int> > m_initialTriggerAlgoBxMaskAlgoTrig;
@@ -120,7 +120,7 @@ L1TGlobalPrescalesVetosESProducer::L1TGlobalPrescalesVetosESProducer(const edm::
   std::string xmlPayload_mask_finor;
   std::string xmlPayload_mask_veto;
 
-  std::vector<std::vector<int> > prescales;
+  std::vector<std::vector<float> > prescales;
   std::vector<unsigned int> triggerMasks;
   std::vector<int> triggerVetoMasks;
   std::map<int, std::vector<int> > triggerAlgoBxMaskAlgoTrig;
@@ -133,9 +133,9 @@ L1TGlobalPrescalesVetosESProducer::L1TGlobalPrescalesVetosESProducer(const edm::
         << "\nCould not find prescale file: " << m_prescaleFile
         << "\nDeafulting to a single prescale column, with all prescales set to 1 (unprescaled)";
 
-    const int inputDefaultPrescale = 1;
+    const float inputDefaultPrescale = 1;
     // by default, fill a single prescale column
-    prescales.push_back(std::vector<int>(m_numberPhysTriggers, inputDefaultPrescale));
+    prescales.push_back(std::vector<float>(m_numberPhysTriggers, inputDefaultPrescale));
   } else {
     while (!input_prescale.eof()) {
       string tmp;
@@ -166,9 +166,9 @@ L1TGlobalPrescalesVetosESProducer::L1TGlobalPrescalesVetosESProducer(const edm::
     if (NumPrescaleSets > 0) {
       // Fill default prescale set
       for (int iSet = 0; iSet < NumPrescaleSets; iSet++) {
-        prescales.push_back(std::vector<int>());
+        prescales.push_back(std::vector<float>());
         for (int iBit = 0; iBit < NumAlgos_prescale; ++iBit) {
-          int inputDefaultPrescale = 0;  // only prescales that are set in the block below are used
+          float inputDefaultPrescale = 0;  // only prescales that are set in the block below are used
           prescales[iSet].push_back(inputDefaultPrescale);
         }
       }
@@ -180,7 +180,7 @@ L1TGlobalPrescalesVetosESProducer::L1TGlobalPrescalesVetosESProducer(const edm::
         std::vector<unsigned int> prescalesForSet =
             settings_prescale.at("prescales").getTableColumn<unsigned int>(col.first.c_str());
         for (unsigned int row = 0; row < prescalesForSet.size(); row++) {
-          unsigned int prescale = prescalesForSet[row];
+          float prescale = prescalesForSet[row];
           unsigned int algoBit = algoBits[row];
           prescales[iSet][algoBit] = prescale;
         }

@@ -177,7 +177,7 @@ std::unique_ptr<const L1TGlobalPrescalesVetos> L1TGlobalPrescalesVetosOnlineProd
 
   //////////////////
 
-  std::vector<std::vector<int>> prescales;
+  std::vector<std::vector<float>> prescales;
   std::vector<unsigned int> triggerMasks;
   std::vector<int> triggerVetoMasks;
   std::map<int, std::vector<int>> triggerAlgoBxMaskAlgoTrig;
@@ -204,9 +204,9 @@ std::unique_ptr<const L1TGlobalPrescalesVetos> L1TGlobalPrescalesVetosOnlineProd
     if (nPrescaleSets > 0) {
       // Fill default prescale set
       for (int iSet = 0; iSet < nPrescaleSets; iSet++) {
-        prescales.push_back(std::vector<int>());
+        prescales.push_back(std::vector<float>());
         for (unsigned int iBit = 0; iBit < m_numberPhysTriggers; ++iBit) {
-          int inputDefaultPrescale = 0;  // only prescales that are set in the block below are used
+          float inputDefaultPrescale = 0;  // only prescales that are set in the block below are used
           prescales[iSet].push_back(inputDefaultPrescale);
         }
       }
@@ -215,10 +215,10 @@ std::unique_ptr<const L1TGlobalPrescalesVetos> L1TGlobalPrescalesVetosOnlineProd
         if (col.second < 1)
           continue;  // we don't care for the algorithms' indicies in 0th column
         int iSet = col.second - 1;
-        std::vector<unsigned int> prescalesForSet =
-            settings_prescale.at("prescales").getTableColumn<unsigned int>(col.first.c_str());
+        std::vector<float> prescalesForSet =
+            settings_prescale.at("prescales").getTableColumn<float>(col.first.c_str());
         for (unsigned int row = 0; row < prescalesForSet.size(); row++) {
-          unsigned int prescale = prescalesForSet[row];
+          float prescale = prescalesForSet[row];
           std::string algoName = algoNames[row];
           unsigned int algoBit = algoName2bit[algoName];
           prescales[iSet][algoBit] = prescale;

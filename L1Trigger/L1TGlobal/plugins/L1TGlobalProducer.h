@@ -94,8 +94,8 @@ private:
   const l1t::PrescalesVetosHelper* m_l1GtPrescalesVetoes;
   unsigned long long m_l1GtPfAlgoCacheID;
 
-  const std::vector<std::vector<int>>* m_prescaleFactorsAlgoTrig;
-  std::vector<std::vector<int>> m_initialPrescaleFactorsAlgoTrig;
+  const std::vector<std::vector<float>>* m_prescaleFactorsAlgoTrig;
+  std::vector<std::vector<float>> m_initialPrescaleFactorsAlgoTrig;
 
   /// CSV file for prescales
   std::string m_prescalesFile;

@@ -205,8 +205,8 @@ namespace l1t {
     unsigned int m_PreScaleColumn;
     unsigned int m_numberOfPreScaleColumns;
 
-    std::vector<std::vector<int>> m_initialPrescaleFactorsAlgoTrig;
-    const std::vector<std::vector<int>>* m_prescaleFactorsAlgoTrig;
+    std::vector<std::vector<float>> m_initialPrescaleFactorsAlgoTrig;
+    const std::vector<std::vector<float>>* m_prescaleFactorsAlgoTrig;
     const std::map<int, std::vector<int>> m_initialTriggerMaskAlgoTrig;
     const std::map<int, std::vector<int>>* m_triggerMaskAlgoTrig;  // vector stores the BX
 

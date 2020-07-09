@@ -18,7 +18,7 @@ public:
   }
 
   unsigned int version_;
-  std::vector<std::vector<int> > prescale_table_;
+  std::vector<std::vector<float> > prescale_table_;
   int bxmask_default_;
   std::map<int, std::vector<int> > bxmask_map_;
   std::vector<int> veto_;

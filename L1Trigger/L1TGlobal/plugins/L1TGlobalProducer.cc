@@ -217,9 +217,9 @@ L1TGlobalProducer::L1TGlobalProducer(const edm::ParameterSet& parSet)
   m_currentLumi = 0;
 
   // Set default, initial, dummy prescale factor table
-  std::vector<std::vector<int>> temp_prescaleTable;
+  std::vector<std::vector<float>> temp_prescaleTable;
 
-  temp_prescaleTable.push_back(std::vector<int>());
+  temp_prescaleTable.push_back(std::vector<float>());
   m_initialPrescaleFactorsAlgoTrig = temp_prescaleTable;
 }
 
@@ -516,7 +516,7 @@ void L1TGlobalProducer::produce(edm::Event& iEvent, const edm::EventSetup& evSet
     pfAlgoSetIndex = max;
   }
 
-  const std::vector<int>& prescaleFactorsAlgoTrig = (*m_prescaleFactorsAlgoTrig).at(pfAlgoSetIndex);
+  const std::vector<float>& prescaleFactorsAlgoTrig = (*m_prescaleFactorsAlgoTrig).at(pfAlgoSetIndex);
 
   // For now, set masks according to prescale value of 0
   m_initialTriggerMaskAlgoTrig.clear();

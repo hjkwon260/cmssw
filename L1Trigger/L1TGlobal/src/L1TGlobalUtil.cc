@@ -162,7 +162,7 @@ void l1t::L1TGlobalUtil::retrieveL1Setup(const edm::EventSetup& evSetup, bool is
     m_PreScaleColumn = 0;
   }
   //std::cout << "Using prescale column: " << m_PreScaleColumn << std::endl;
-  const std::vector<int>& prescaleSet = (*m_prescaleFactorsAlgoTrig)[m_PreScaleColumn];
+  const std::vector<float>& prescaleSet = (*m_prescaleFactorsAlgoTrig)[m_PreScaleColumn];
 
   for (std::map<std::string, L1TUtmAlgorithm>::const_iterator itAlgo = m_algorithmMap->begin();
        itAlgo != m_algorithmMap->end();
@@ -239,7 +239,7 @@ void l1t::L1TGlobalUtil::retrieveL1Event(const edm::Event& iEvent,
           m_PreScaleColumn = 0;
         }
       }
-      const std::vector<int>& prescaleSet = (*m_prescaleFactorsAlgoTrig)[m_PreScaleColumn];
+      const std::vector<float>& prescaleSet = (*m_prescaleFactorsAlgoTrig)[m_PreScaleColumn];
 
       // Grab the final OR from the AlgBlk,
       m_finalOR = algBlk->getFinalOR();
@@ -284,7 +284,7 @@ void l1t::L1TGlobalUtil::loadPrescalesAndMasks() {
   inputPrescaleFile.open(m_preScaleFileName);
 
   std::vector<std::vector<int> > vec;
-  std::vector<std::vector<int> > prescale_vec;
+  std::vector<std::vector<float> > prescale_vec;
 
   if (inputPrescaleFile) {
     std::string prefix1("#");
@@ -338,9 +338,9 @@ void l1t::L1TGlobalUtil::loadPrescalesAndMasks() {
     if (NumPrescaleSets > 0) {
       // Fill default prescale set
       for (int iSet = 0; iSet < NumPrescaleSets; iSet++) {
-        prescale_vec.push_back(std::vector<int>());
+        prescale_vec.push_back(std::vector<float>());
         for (unsigned int iBit = 0; iBit < m_numberPhysTriggers; ++iBit) {
-          int inputDefaultPrescale = 1;
+          float inputDefaultPrescale = 1;
           prescale_vec[iSet].push_back(inputDefaultPrescale);
         }
       }
@@ -379,9 +379,9 @@ void l1t::L1TGlobalUtil::loadPrescalesAndMasks() {
     m_PreScaleColumn = 0;
 
     for (int col = 0; col < 1; col++) {
-      prescale_vec.push_back(std::vector<int>());
+      prescale_vec.push_back(std::vector<float>());
       for (unsigned int iBit = 0; iBit < m_numberPhysTriggers; ++iBit) {
-        int inputDefaultPrescale = 0;
+        float inputDefaultPrescale = 0;
         prescale_vec[col].push_back(inputDefaultPrescale);
       }
     }

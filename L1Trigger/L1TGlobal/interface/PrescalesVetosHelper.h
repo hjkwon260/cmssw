@@ -48,8 +48,8 @@ namespace l1t {
       write_->bxmask_default_ = value;
     };
 
-    inline const std::vector<std::vector<int> >& prescaleTable() const { return read_->prescale_table_; };
-    void setPrescaleFactorTable(std::vector<std::vector<int> > value) {
+    inline const std::vector<std::vector<double> >& prescaleTable() const { return read_->prescale_table_; };
+    void setPrescaleFactorTable(std::vector<std::vector<double> > value) {
       check_write();
       write_->prescale_table_ = value;
     };

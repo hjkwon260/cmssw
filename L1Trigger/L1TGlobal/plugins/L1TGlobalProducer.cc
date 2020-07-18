@@ -217,9 +217,9 @@ L1TGlobalProducer::L1TGlobalProducer(const edm::ParameterSet& parSet)
   m_currentLumi = 0;
 
   // Set default, initial, dummy prescale factor table
-  std::vector<std::vector<int>> temp_prescaleTable;
+  std::vector<std::vector<double>> temp_prescaleTable;
 
-  temp_prescaleTable.push_back(std::vector<int>());
+  temp_prescaleTable.push_back(std::vector<double>());
   m_initialPrescaleFactorsAlgoTrig = temp_prescaleTable;
 }
 

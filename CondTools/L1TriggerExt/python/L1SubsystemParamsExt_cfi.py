@@ -17,12 +17,18 @@ def initL1SubsystemsExt( tagBaseVec = [],
             type = cms.string('L1TUtmTriggerMenu'),
             key = cms.string(objectKey)
         ),
+        # cms.PSet(
+        #     record = cms.string('L1TGlobalPrescalesVetosO2ORcd'),
+        #     tag = cms.string('L1TGlobalPrescalesVetos_' + tagBaseVec[ L1CondEnumExt.L1TGlobalPrescalesVetos ]),
+        #     type = cms.string('L1TGlobalPrescalesVetos'),
+        #     key = cms.string(objectKey)
+        # ),
         cms.PSet(
-            record = cms.string('L1TGlobalPrescalesVetosO2ORcd'),
-            tag = cms.string('L1TGlobalPrescalesVetos_' + tagBaseVec[ L1CondEnumExt.L1TGlobalPrescalesVetos ]),
-            type = cms.string('L1TGlobalPrescalesVetos'),
+            record = cms.string('L1TGlobalFractionalPrescalesVetosO2ORcd'),
+            tag = cms.string('L1TGlobalFractionalPrescalesVetos_' + tagBaseVec[ L1CondEnumExt.L1TGlobalFractionalPrescalesVetos ]),
+            type = cms.string('L1TGlobalFractionalPrescalesVetos'),
             key = cms.string(objectKey)
-        ),
+        ),        
         cms.PSet(
             record = cms.string('L1TMuonGlobalParamsO2ORcd'),
             tag = cms.string('L1TMuonGlobalParams_' + tagBaseVec[ L1CondEnumExt.L1TMuonGlobalParams ]),

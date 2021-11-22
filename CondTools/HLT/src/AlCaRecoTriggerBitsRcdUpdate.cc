@@ -42,6 +42,8 @@ private:
   bool removeKeysFromMap(const std::vector<std::string> &keys, TriggerMap &triggerMap) const;
   bool replaceKeysFromMap(const std::vector<edm::ParameterSet> &alcarecoReplace, TriggerMap &triggerMap) const;
   bool addTriggerLists(const std::vector<edm::ParameterSet> &triggerListsAdd, AlCaRecoTriggerBits &bits) const;
+  bool addpathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd, AlCaRecoTriggerBits &bits) const;
+  bool removepathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove, AlCaRecoTriggerBits &bits) const;
   void writeBitsToDB(const AlCaRecoTriggerBits &bitsToWrite) const;
 
   edm::ESGetToken<AlCaRecoTriggerBits, AlCaRecoTriggerBitsRcd> triggerBitsToken_;
@@ -52,6 +54,8 @@ private:
   const std::vector<std::string> listNamesRemove_;
   const std::vector<edm::ParameterSet> triggerListsAdd_;
   const std::vector<edm::ParameterSet> alcarecoReplace_;
+  const std::vector<edm::ParameterSet> pathsToAdd_;
+  const std::vector<edm::ParameterSet> pathsToRemove_;
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -66,7 +70,10 @@ AlCaRecoTriggerBitsRcdUpdate::AlCaRecoTriggerBitsRcdUpdate(const edm::ParameterS
       startEmpty_(cfg.getParameter<bool>("startEmpty")),
       listNamesRemove_(cfg.getParameter<std::vector<std::string> >("listNamesRemove")),
       triggerListsAdd_(cfg.getParameter<std::vector<edm::ParameterSet> >("triggerListsAdd")),
-      alcarecoReplace_(cfg.getParameter<std::vector<edm::ParameterSet> >("alcarecoToReplace")) {}
+      alcarecoReplace_(cfg.getParameter<std::vector<edm::ParameterSet> >("alcarecoToReplace")), 
+      pathsToAdd_(cfg.getParameter<std::vector<edm::ParameterSet> >("pathsToAdd")), 
+      pathsToRemove_(cfg.getParameter<std::vector<edm::ParameterSet> >("pathsToRemove")) 
+      {}
 
 ///////////////////////////////////////////////////////////////////////
 void AlCaRecoTriggerBitsRcdUpdate::analyze(const edm::Event &evt, const edm::EventSetup &iSetup) {
@@ -94,6 +101,12 @@ void AlCaRecoTriggerBitsRcdUpdate::analyze(const edm::Event &evt, const edm::Eve
 
   // now replace keys
   this->replaceKeysFromMap(alcarecoReplace_, bitsToWrite->m_alcarecoToTrig);
+
+  // add paths to the exisiting key
+  this->addpathsFromMap(pathsToAdd_, *bitsToWrite);
+
+  // remove paths to the exisiting key
+  this->removepathsFromMap(pathsToRemove_, *bitsToWrite);
 
   // finally write to DB
   this->writeBitsToDB(*bitsToWrite);
@@ -166,6 +179,79 @@ bool AlCaRecoTriggerBitsRcdUpdate::addTriggerLists(const std::vector<edm::Parame
                                         << "remove from 'triggerListsAdd' or "
                                         << " add to 'listNamesRemove'.\n";
     }
+    triggerMap[filter] = mergedPaths;
+  }
+
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////
+bool AlCaRecoTriggerBitsRcdUpdate::addpathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd,
+                                                   AlCaRecoTriggerBits &bits) const {
+  TriggerMap &triggerMap = bits.m_alcarecoToTrig;
+
+  // loop on PSets, each containing the key (filter name) and a vstring with triggers
+  for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToAdd.begin(); iSet != pathsToAdd.end();
+       ++iSet) {
+
+    const std::string filter(iSet->getParameter<std::string>("listName"));
+    std::string mergedPathsInKey;
+
+    for(const auto& imap : triggerMap)
+    {
+      if(imap.first==filter) mergedPathsInKey = imap.second;
+    }
+    // if ((mergedPathsInKey == bits.delimeter_)) {
+    //   std::cout << "here" << std::endl;
+    // }
+    std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
+    std::vector<std::string> paths(iSet->getParameter<std::vector<std::string> >("hltPaths"));
+
+    PathsInKey.insert(std::end(PathsInKey), std::begin(paths), std::end(paths));
+    // We must avoid a map<string,vector<string> > in DB for performance reason,
+    // so we have to merge the paths into one string that will be decoded when needed:
+    const std::string mergedPaths = bits.compose(PathsInKey);
+
+    triggerMap[filter] = mergedPaths;
+  }
+
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////
+bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove,
+                                                   AlCaRecoTriggerBits &bits) const {
+  TriggerMap &triggerMap = bits.m_alcarecoToTrig;
+
+  // loop on PSets, each containing the key (filter name) and a vstring with triggers
+  for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToRemove.begin(); iSet != pathsToRemove.end();
+       ++iSet) {
+
+    const std::string filter(iSet->getParameter<std::string>("listName"));
+    std::string mergedPathsInKey;
+
+    for(const auto& imap : triggerMap)
+    {
+      if(imap.first==filter) mergedPathsInKey = imap.second;
+    }
+    std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
+    const std::vector<std::string> paths(iSet->getParameter<std::vector<std::string> >("hltPaths"));
+    // We must avoid a map<string,vector<string> > in DB for performance reason,
+    // so we have to merge the paths into one string that will be decoded when needed:
+    for(const auto& ipath : paths)
+    {
+      for (auto it = PathsInKey.begin(); it != PathsInKey.end();)
+      {
+        if ((*it) == ipath){
+          it = PathsInKey.erase(it);
+        }
+        else
+          ++it;
+      } 
+    }
+
+    const std::string mergedPaths = bits.compose(PathsInKey);
+
     triggerMap[filter] = mergedPaths;
   }
 

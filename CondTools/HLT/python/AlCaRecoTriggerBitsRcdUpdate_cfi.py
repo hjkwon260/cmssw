@@ -31,5 +31,7 @@ AlCaRecoTriggerBitsRcdUpdate = cms.EDAnalyzer(
         cms.PSet(oldKey = cms.string('TkAlMinBias'),
                  newKey = cms.string('testKey2')
                  )
-        )
+        ),
+    pathsToAdd = cms.VPSet(),
+    pathsToRemove = cms.VPSet()
     )

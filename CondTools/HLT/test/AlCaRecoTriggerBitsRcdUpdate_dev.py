@@ -14,6 +14,8 @@
 #
 #  Author    : Marco Musich
 #  Date      : Feb 2016
+#  Modified  : Hyejin Kwon
+#  Date      : Nov 2021
 
 import FWCore.ParameterSet.Config as cms
 import FWCore.ParameterSet.VarParsing as VarParsing 
@@ -22,14 +24,16 @@ process = cms.Process("UPDATEDB")
 
 options = VarParsing.VarParsing()
 options.register( "inputDB", 
-                  "frontier://FrontierProd/CMS_CONDITIONS",  #default value
+                  # "frontier://FrontierProd/CMS_CONDITIONS",  #default value
+                  "sqlite_file:AlCaRecoTriggerBits.db",  #default value
                   VarParsing.VarParsing.multiplicity.singleton, 
                   VarParsing.VarParsing.varType.string,
                   "the input DB"
                   )
 
 options.register( "inputTag", 
-                  "AlCaRecoHLTpaths8e29_1e31_v7_hlt",  #default value
+                  # "AlCaRecoHLTpaths8e29_1e31_v7_hlt",  #default value
+                  "testTag",
                   VarParsing.VarParsing.multiplicity.singleton, 
                   VarParsing.VarParsing.varType.string,
                   "the input tag"
@@ -56,18 +60,39 @@ options.register( "firstRun",
                   "the first run"
                   )
 
+options.register( "hltKey", 
+                  "/cdaq/test/commissioning2021/CRAFT/Cosmics/V4",  #default value
+                  VarParsing.VarParsing.multiplicity.singleton, 
+                  VarParsing.VarParsing.varType.string,
+                  "the hlt key"
+                  )
+
+options.register( "keyToModify", 
+                  "SiStripCalMinBias",  #default value
+                  VarParsing.VarParsing.multiplicity.singleton, 
+                  VarParsing.VarParsing.varType.string,
+                  "the key to modify"
+                  )
+
+options.register('pathsToModify',
+                 'HLT_*ZeroBias_part*_v*', #default value
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.string,
+                 "Comma-separated list of paths to be modified")
 options.parseArguments()
 
 process.load("FWCore.MessageLogger.MessageLogger_cfi")
-process.MessageLogger.cerr = cms.untracked.PSet(enable = cms.untracked.bool(False))
+process.MessageLogger.cerr = cms.untracked.PSet(enable = cms.untracked.bool(True))
 process.MessageLogger.cout = cms.untracked.PSet(INFO = cms.untracked.PSet(
     reportEvery = cms.untracked.int32(1)
     ))
-
+process.MessageLogger.cout.enable = cms.untracked.bool(True)
+process.MessageLogger.cout.threshold = cms.untracked.string('DEBUG')
+process.MessageLogger.debugModules = cms.untracked.vstring('*')
 # the module writing to DB
 process.load("CondTools.HLT.AlCaRecoTriggerBitsRcdUpdate_cfi")
 # The IOV that you want to write out, defaut is 1 to -1/inf. 
-options.firstRun = 444444
+# options.firstRun = 444444
 process.AlCaRecoTriggerBitsRcdUpdate.firstRunIOV = options.firstRun # docu see...
 #process.AlCaRecoTriggerBitsRcdUpdate.lastRunIOV = -1 # ...cfi
 # If you want to start from scratch, comment the next line:
@@ -86,17 +111,22 @@ process.AlCaRecoTriggerBitsRcdUpdate.startEmpty = False
 # initialize triggerListsAdd, alcarecoToReplace where examples are set in the cfi file
 process.AlCaRecoTriggerBitsRcdUpdate.triggerListsAdd = []
 process.AlCaRecoTriggerBitsRcdUpdate.alcarecoToReplace = []
-
-process.AlCaRecoTriggerBitsRcdUpdate.pathsToAdd = [
-      cms.PSet(listName = cms.string('TkAlCosmics'),
-               hltPaths = cms.vstring('test1', 'test2', 'test3', 'test4')
-               )
-]
-process.AlCaRecoTriggerBitsRcdUpdate.pathsToRemove = [
-      cms.PSet(listName = cms.string('SiStripCalMinBiasAAG'),
-               hltPaths = cms.vstring('HLT_PAL1MinimumBiasHF_OR_SinglePixelTrack_FirstCollisionAfterAbortGap*','HLT_PAL1MinimumBiasHF_OR_FirstCollisionAfterAbortGap_v*')
-               )
-]
+# add paths if hlt key has 'special', remove those for the other cases
+runMode = options.hltKey.split('/')[2]
+if(runMode=='special'):
+  print(runMode,'mode: adding',options.pathsToModify,'to',options.keyToModify,'if not exist')
+  process.AlCaRecoTriggerBitsRcdUpdate.pathsToAdd = [
+        cms.PSet(listName = cms.string(options.keyToModify),
+                 hltPaths = cms.vstring(options.pathsToModify.split(','))
+                 )
+  ]
+else: 
+  print('not special mode, removing',options.pathsToModify,'from',options.keyToModify,'if exist') 
+  process.AlCaRecoTriggerBitsRcdUpdate.pathsToRemove = [
+        cms.PSet(listName = cms.string(options.keyToModify),
+                 hltPaths = cms.vstring(options.pathsToModify.split(','))
+                 )
+  ]
 
 # No data, but have to specify run number if you do not want 1, see below:
 process.source = cms.Source("EmptySource",

@@ -16,7 +16,7 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
@@ -28,23 +28,23 @@
 // Rcd for reading old one:
 #include "CondFormats/DataRecord/interface/AlCaRecoTriggerBitsRcd.h"
 
-class AlCaRecoTriggerBitsRcdUpdate : public edm::one::EDAnalyzer<edm::one::WatchRuns> {
+class AlCaRecoTriggerBitsRcdUpdate : public edm::EDAnalyzer {
 public:
   explicit AlCaRecoTriggerBitsRcdUpdate(const edm::ParameterSet &cfg);
   ~AlCaRecoTriggerBitsRcdUpdate() override {}
 
   void analyze(const edm::Event &evt, const edm::EventSetup &evtSetup) override;
-  void beginRun(const edm::Run &run, const edm::EventSetup &evtSetup) override {}
-  void endRun(edm::Run const &, edm::EventSetup const &) override {}
 
 private:
   typedef std::map<std::string, std::string> TriggerMap;
+  AlCaRecoTriggerBits *createStartTriggerBits(bool startEmpty, const edm::EventSetup &evtSetup) const;
   bool removeKeysFromMap(const std::vector<std::string> &keys, TriggerMap &triggerMap) const;
   bool replaceKeysFromMap(const std::vector<edm::ParameterSet> &alcarecoReplace, TriggerMap &triggerMap) const;
   bool addTriggerLists(const std::vector<edm::ParameterSet> &triggerListsAdd, AlCaRecoTriggerBits &bits) const;
   bool addpathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd, AlCaRecoTriggerBits &bits) const;
   bool removepathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove, AlCaRecoTriggerBits &bits) const;
-  void writeBitsToDB(const AlCaRecoTriggerBits &bitsToWrite) const;
+  /// Takes over memory uresponsibility for 'bitsToWrite'.
+  void writeBitsToDB(AlCaRecoTriggerBits *bitsToWrite) const;
 
   edm::ESGetToken<AlCaRecoTriggerBits, AlCaRecoTriggerBitsRcd> triggerBitsToken_;
   unsigned int nEventCalls_;
@@ -70,7 +70,7 @@ AlCaRecoTriggerBitsRcdUpdate::AlCaRecoTriggerBitsRcdUpdate(const edm::ParameterS
       startEmpty_(cfg.getParameter<bool>("startEmpty")),
       listNamesRemove_(cfg.getParameter<std::vector<std::string> >("listNamesRemove")),
       triggerListsAdd_(cfg.getParameter<std::vector<edm::ParameterSet> >("triggerListsAdd")),
-      alcarecoReplace_(cfg.getParameter<std::vector<edm::ParameterSet> >("alcarecoToReplace")), 
+      alcarecoReplace_(cfg.getParameter<std::vector<edm::ParameterSet> >("alcarecoToReplace")),
       pathsToAdd_(cfg.getParameter<std::vector<edm::ParameterSet> >("pathsToAdd")), 
       pathsToRemove_(cfg.getParameter<std::vector<edm::ParameterSet> >("pathsToRemove")) 
       {}
@@ -85,13 +85,8 @@ void AlCaRecoTriggerBitsRcdUpdate::analyze(const edm::Event &evt, const edm::Eve
     return;
   }
 
-  // create what to write - starting from empty or existing list
-  std::unique_ptr<AlCaRecoTriggerBits> bitsToWrite;
-  if (startEmpty_) {
-    bitsToWrite = std::make_unique<AlCaRecoTriggerBits>();
-  } else {
-    bitsToWrite = std::make_unique<AlCaRecoTriggerBits>(iSetup.getData(triggerBitsToken_));
-  }
+  // create what to write - starting from empty or existing list (auto_ptr?)
+  AlCaRecoTriggerBits *bitsToWrite = this->createStartTriggerBits(startEmpty_, iSetup);
 
   // remove some existing entries in map
   this->removeKeysFromMap(listNamesRemove_, bitsToWrite->m_alcarecoToTrig);
@@ -109,7 +104,18 @@ void AlCaRecoTriggerBitsRcdUpdate::analyze(const edm::Event &evt, const edm::Eve
   this->removepathsFromMap(pathsToRemove_, *bitsToWrite);
 
   // finally write to DB
-  this->writeBitsToDB(*bitsToWrite);
+  this->writeBitsToDB(bitsToWrite);
+}
+
+///////////////////////////////////////////////////////////////////////
+AlCaRecoTriggerBits *  // auto_ptr?
+AlCaRecoTriggerBitsRcdUpdate::createStartTriggerBits(bool startEmpty, const edm::EventSetup &evtSetup) const {
+  if (startEmpty) {
+    return new AlCaRecoTriggerBits;
+  } else {
+    const auto &triggerBits = &evtSetup.getData(triggerBitsToken_);
+    return new AlCaRecoTriggerBits(*triggerBits);  // copy old one
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -119,7 +125,7 @@ bool AlCaRecoTriggerBitsRcdUpdate::removeKeysFromMap(const std::vector<std::stri
     if (triggerMap.find(*iKey) != triggerMap.end()) {
       // remove
       //      edm::LogError("Temp") << "@SUB=removeKeysFromMap" << "Cannot yet remove '" << *iKey
-      // 			    << "' from map.";
+      //          << "' from map.";
       // FIXME: test next line@
       triggerMap.erase(*iKey);
     } else {  // not in list ==> misconfiguartion!
@@ -205,12 +211,28 @@ bool AlCaRecoTriggerBitsRcdUpdate::addpathsFromMap(const std::vector<edm::Parame
     //   std::cout << "here" << std::endl;
     // }
     std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
+    std::vector<std::string> PathsInKeyTmp = PathsInKey;
     std::vector<std::string> paths(iSet->getParameter<std::vector<std::string> >("hltPaths"));
 
-    PathsInKey.insert(std::end(PathsInKey), std::begin(paths), std::end(paths));
+    for(const auto& ipath : paths)
+    { 
+      bool isInPathsInKey = false;
+      for (auto it = PathsInKey.begin(); it != PathsInKey.end();)
+      {
+        if ((*it) == ipath){
+          isInPathsInKey = true;
+          break;
+        }
+        else
+          ++it;
+      } 
+      if(isInPathsInKey==false) PathsInKeyTmp.push_back(ipath);
+    }
+
+    // PathsInKey.insert(std::end(PathsInKey), std::begin(paths), std::end(paths));
     // We must avoid a map<string,vector<string> > in DB for performance reason,
     // so we have to merge the paths into one string that will be decoded when needed:
-    const std::string mergedPaths = bits.compose(PathsInKey);
+    const std::string mergedPaths = bits.compose(PathsInKeyTmp);
 
     triggerMap[filter] = mergedPaths;
   }
@@ -259,7 +281,7 @@ bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::Par
 }
 
 ///////////////////////////////////////////////////////////////////////
-void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(const AlCaRecoTriggerBits &bitsToWrite) const {
+void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(AlCaRecoTriggerBits *bitsToWrite) const {
   edm::LogInfo("") << "Uploading to the database...";
 
   edm::Service<cond::service::PoolDBOutputService> poolDbService;
@@ -267,7 +289,46 @@ void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(const AlCaRecoTriggerBits &bits
     throw cms::Exception("NotAvailable") << "PoolDBOutputService not available.\n";
   }
 
-  poolDbService->writeOneIOV(bitsToWrite, firstRunIOV_, "AlCaRecoTriggerBitsRcd");
+  // ownership of bitsToWrite transferred
+  // FIXME: Have to check that timetype is run number! How?
+  const std::string recordName("AlCaRecoTriggerBitsRcd");
+  // poolDbService->writeOne( bitsToWrite, firstRunIOV_, recordName );
+
+  // new lines from Giacomo
+  poolDbService->startTransaction();
+  auto newHash = poolDbService->session().storePayload(*bitsToWrite);
+  cond::TagInfo_t tag_info;                                                                                                        
+                            
+  if(poolDbService->tagInfo(recordName, tag_info)){
+    if( newHash != tag_info.lastInterval.payloadId ){
+      std::cout <<"## Appending to existing tag..."<<std::endl;
+      poolDbService->forceInit();
+      poolDbService->appendSinceTime(newHash, firstRunIOV_, recordName);
+    } else {
+      std::cout <<"## Skipping update since hash is the same..."<<std::endl;
+    }                                                                                                                
+                            
+  } else{
+    std::cout <<"## Creating new tag..."<<std::endl;
+    poolDbService->forceInit();
+    poolDbService->createNewIOV( newHash, firstRunIOV_, recordName);
+  }
+  poolDbService->commitTransaction();
+
+  delete bitsToWrite;
+
+
+  // if (poolDbService->isNewTagRequest(recordName)) {  // tag not yet existing
+  //   // lastRunIOV_ = -1 means infinity:
+  //   const cond::Time_t lastRun = (lastRunIOV_ < 0 ? poolDbService->endOfTime() : lastRunIOV_);
+  //   poolDbService->createNewIOV(bitsToWrite, firstRunIOV_, lastRun, recordName);
+  // } else {  // tag exists, can only append
+  //   if (lastRunIOV_ >= 0) {
+  //     throw cms::Exception("BadConfig") << "Tag already exists, can only append until infinity,"
+  //                                       << " but lastRunIOV = " << lastRunIOV_ << ".\n";
+  //   }
+  //   poolDbService->appendSinceTime(bitsToWrite, firstRunIOV_, recordName);
+  // }
 
   edm::LogInfo("") << "...done for runs " << firstRunIOV_ << " to " << lastRunIOV_ << " (< 0 meaning infinity)!";
 }

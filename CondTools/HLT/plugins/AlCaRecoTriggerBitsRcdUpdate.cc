@@ -313,15 +313,15 @@ void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(const AlCaRecoTriggerBits &bits
 
   if (poolDbService->tagInfo(recordName, tag_info)) {
     if (newHash != tag_info.lastInterval.payloadId) {
-      std::cout << "## Appending to existing tag..." << std::endl;
+      edm::LogInfo("") << "## Appending to existing tag...";
       poolDbService->forceInit();
       poolDbService->appendSinceTime(newHash, firstRunIOV_, recordName);
     } else {
-      std::cout << "## Skipping update since hash is the same..." << std::endl;
+      edm::LogInfo("") << "## Skipping update since hash is the same...";
     }
 
   } else {
-    std::cout << "## Creating new tag..." << std::endl;
+    edm::LogInfo("") << "## Creating new tag...";
     poolDbService->forceInit();
     poolDbService->createNewIOV(newHash, firstRunIOV_, recordName);
   }

@@ -87,7 +87,7 @@ void AlCaRecoTriggerBitsRcdUpdate::fillDescriptions(edm::ConfigurationDescriptio
   desc_pathsToRemove.add<std::string>("listName");
   desc_pathsToRemove.add<std::vector<std::string>>("hltPaths");
   std::vector<edm::ParameterSet> default_pathsToRemove;
-  desc.addVPSet("pathsToRemove", desc_pathsToRemove, default_pathsToRemove);  
+  desc.addVPSet("pathsToRemove", desc_pathsToRemove, default_pathsToRemove);
 
   descriptions.addWithDefaultLabel(desc);
 }
@@ -101,10 +101,9 @@ AlCaRecoTriggerBitsRcdUpdate::AlCaRecoTriggerBitsRcdUpdate(const edm::ParameterS
       startEmpty_(cfg.getParameter<bool>("startEmpty")),
       listNamesRemove_(cfg.getParameter<std::vector<std::string>>("listNamesRemove")),
       triggerListsAdd_(cfg.getParameter<std::vector<edm::ParameterSet>>("triggerListsAdd")),
-      alcarecoReplace_(cfg.getParameter<std::vector<edm::ParameterSet> >("alcarecoToReplace")), 
-      pathsToAdd_(cfg.getParameter<std::vector<edm::ParameterSet> >("pathsToAdd")), 
-      pathsToRemove_(cfg.getParameter<std::vector<edm::ParameterSet> >("pathsToRemove")) 
-      {}
+      alcarecoReplace_(cfg.getParameter<std::vector<edm::ParameterSet>>("alcarecoToReplace")),
+      pathsToAdd_(cfg.getParameter<std::vector<edm::ParameterSet>>("pathsToAdd")),
+      pathsToRemove_(cfg.getParameter<std::vector<edm::ParameterSet>>("pathsToRemove")) {}
 
 ///////////////////////////////////////////////////////////////////////
 void AlCaRecoTriggerBitsRcdUpdate::analyze(const edm::Event &evt, const edm::EventSetup &iSetup) {
@@ -222,34 +221,30 @@ bool AlCaRecoTriggerBitsRcdUpdate::addpathsFromMap(const std::vector<edm::Parame
   TriggerMap &triggerMap = bits.m_alcarecoToTrig;
 
   // loop on PSets, each containing the key (filter name) and a vstring with triggers
-  for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToAdd.begin(); iSet != pathsToAdd.end();
-       ++iSet) {
-
+  for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToAdd.begin(); iSet != pathsToAdd.end(); ++iSet) {
     const std::string filter(iSet->getParameter<std::string>("listName"));
     std::string mergedPathsInKey;
 
-    for(const auto& imap : triggerMap)
-    {
-      if(imap.first==filter) mergedPathsInKey = imap.second;
+    for (const auto &imap : triggerMap) {
+      if (imap.first == filter)
+        mergedPathsInKey = imap.second;
     }
 
     std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
     std::vector<std::string> PathsInKeyTmp = PathsInKey;
-    std::vector<std::string> paths(iSet->getParameter<std::vector<std::string> >("hltPaths"));
+    std::vector<std::string> paths(iSet->getParameter<std::vector<std::string>>("hltPaths"));
 
-    for(const auto& ipath : paths)
-    { 
+    for (const auto &ipath : paths) {
       bool isPathsInKey = false;
-      for (auto it = PathsInKey.begin(); it != PathsInKey.end();)
-      {
-        if ((*it) == ipath){
+      for (auto it = PathsInKey.begin(); it != PathsInKey.end();) {
+        if ((*it) == ipath) {
           isPathsInKey = true;
           break;
-        }
-        else
+        } else
           ++it;
-      } 
-      if(isPathsInKey==false) PathsInKeyTmp.push_back(ipath);
+      }
+      if (isPathsInKey == false)
+        PathsInKeyTmp.push_back(ipath);
     }
 
     // We must avoid a map<string,vector<string> > in DB for performance reason,
@@ -264,34 +259,30 @@ bool AlCaRecoTriggerBitsRcdUpdate::addpathsFromMap(const std::vector<edm::Parame
 
 ///////////////////////////////////////////////////////////////////////
 bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove,
-                                                   AlCaRecoTriggerBits &bits) const {
+                                                      AlCaRecoTriggerBits &bits) const {
   TriggerMap &triggerMap = bits.m_alcarecoToTrig;
 
   // loop on PSets, each containing the key (filter name) and a vstring with triggers
   for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToRemove.begin(); iSet != pathsToRemove.end();
        ++iSet) {
-
     const std::string filter(iSet->getParameter<std::string>("listName"));
     std::string mergedPathsInKey;
 
-    for(const auto& imap : triggerMap)
-    {
-      if(imap.first==filter) mergedPathsInKey = imap.second;
+    for (const auto &imap : triggerMap) {
+      if (imap.first == filter)
+        mergedPathsInKey = imap.second;
     }
 
     std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
-    const std::vector<std::string> paths(iSet->getParameter<std::vector<std::string> >("hltPaths"));
+    const std::vector<std::string> paths(iSet->getParameter<std::vector<std::string>>("hltPaths"));
 
-    for(const auto& ipath : paths)
-    {
-      for (auto it = PathsInKey.begin(); it != PathsInKey.end();)
-      {
-        if ((*it) == ipath){
+    for (const auto &ipath : paths) {
+      for (auto it = PathsInKey.begin(); it != PathsInKey.end();) {
+        if ((*it) == ipath) {
           it = PathsInKey.erase(it);
-        }
-        else
+        } else
           ++it;
-      } 
+      }
     }
 
     // We must avoid a map<string,vector<string> > in DB for performance reason,
@@ -318,21 +309,21 @@ void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(const AlCaRecoTriggerBits &bits
   // when updating existing tag, compare payload hashs and skip appending new hash if it's same with last iov's
   poolDbService->startTransaction();
   auto newHash = poolDbService->session().storePayload(bitsToWrite);
-  cond::TagInfo_t tag_info;                                                                                                        
+  cond::TagInfo_t tag_info;
 
-  if(poolDbService->tagInfo(recordName, tag_info)){
-    if( newHash != tag_info.lastInterval.payloadId ){
-      std::cout <<"## Appending to existing tag..."<<std::endl;
+  if (poolDbService->tagInfo(recordName, tag_info)) {
+    if (newHash != tag_info.lastInterval.payloadId) {
+      std::cout << "## Appending to existing tag..." << std::endl;
       poolDbService->forceInit();
       poolDbService->appendSinceTime(newHash, firstRunIOV_, recordName);
     } else {
-      std::cout <<"## Skipping update since hash is the same..."<<std::endl;
-    }                                                                                                                
+      std::cout << "## Skipping update since hash is the same..." << std::endl;
+    }
 
-  } else{
-    std::cout <<"## Creating new tag..."<<std::endl;
+  } else {
+    std::cout << "## Creating new tag..." << std::endl;
     poolDbService->forceInit();
-    poolDbService->createNewIOV( newHash, firstRunIOV_, recordName);
+    poolDbService->createNewIOV(newHash, firstRunIOV_, recordName);
   }
   poolDbService->commitTransaction();
 

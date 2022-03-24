@@ -40,8 +40,8 @@ private:
   bool removeKeysFromMap(const std::vector<std::string> &keys, TriggerMap &triggerMap) const;
   bool replaceKeysFromMap(const std::vector<edm::ParameterSet> &alcarecoReplace, TriggerMap &triggerMap) const;
   bool addTriggerLists(const std::vector<edm::ParameterSet> &triggerListsAdd, AlCaRecoTriggerBits &bits) const;
-  bool addpathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd, AlCaRecoTriggerBits &bits) const;
-  bool removepathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove, AlCaRecoTriggerBits &bits) const;
+  bool addPathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd, AlCaRecoTriggerBits &bits) const;
+  bool removePathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove, AlCaRecoTriggerBits &bits) const;
   void writeBitsToDB(const AlCaRecoTriggerBits &bitsToWrite) const;
 
   const edm::ESGetToken<AlCaRecoTriggerBits, AlCaRecoTriggerBitsRcd> triggerBitsToken_;
@@ -132,11 +132,11 @@ void AlCaRecoTriggerBitsRcdUpdate::analyze(const edm::Event &evt, const edm::Eve
   // now replace keys
   this->replaceKeysFromMap(alcarecoReplace_, bitsToWrite->m_alcarecoToTrig);
 
-  // add paths to the exisiting key
-  this->addpathsFromMap(pathsToAdd_, *bitsToWrite);
+  // add paths to the existing key
+  this->addPathsFromMap(pathsToAdd_, *bitsToWrite);
 
-  // remove paths from the exisiting key
-  this->removepathsFromMap(pathsToRemove_, *bitsToWrite);
+  // remove paths from the existing key
+  this->removePathsFromMap(pathsToRemove_, *bitsToWrite);
 
   // finally write to DB
   this->writeBitsToDB(*bitsToWrite);
@@ -147,10 +147,6 @@ bool AlCaRecoTriggerBitsRcdUpdate::removeKeysFromMap(const std::vector<std::stri
                                                      TriggerMap &triggerMap) const {
   for (std::vector<std::string>::const_iterator iKey = keys.begin(), endKey = keys.end(); iKey != endKey; ++iKey) {
     if (triggerMap.find(*iKey) != triggerMap.end()) {
-      // remove
-      //      edm::LogError("Temp") << "@SUB=removeKeysFromMap" << "Cannot yet remove '" << *iKey
-      //          << "' from map.";
-      // FIXME: test next line@
       triggerMap.erase(*iKey);
     } else {  // not in list ==> misconfiguartion!
       throw cms::Exception("BadConfig") << "[AlCaRecoTriggerBitsRcdUpdate::removeKeysFromMap] "
@@ -196,14 +192,13 @@ bool AlCaRecoTriggerBitsRcdUpdate::addTriggerLists(const std::vector<edm::Parame
   TriggerMap &triggerMap = bits.m_alcarecoToTrig;
 
   // loop on PSets, each containing the key (filter name) and a vstring with triggers
-  for (std::vector<edm::ParameterSet>::const_iterator iSet = triggerListsAdd.begin(); iSet != triggerListsAdd.end();
-       ++iSet) {
-    const std::vector<std::string> paths(iSet->getParameter<std::vector<std::string>>("hltPaths"));
+  for (const auto &iSet : triggerListsAdd) {
+    const std::vector<std::string> paths(iSet.getParameter<std::vector<std::string>>("hltPaths"));
     // We must avoid a map<string,vector<string> > in DB for performance reason,
     // so we have to merge the paths into one string that will be decoded when needed:
     const std::string mergedPaths = bits.compose(paths);
 
-    const std::string filter(iSet->getParameter<std::string>("listName"));
+    const std::string filter(iSet.getParameter<std::string>("listName"));
     if (triggerMap.find(filter) != triggerMap.end()) {
       throw cms::Exception("BadConfig") << "List name '" << filter << "' already in map, either "
                                         << "remove from 'triggerListsAdd' or "
@@ -216,13 +211,13 @@ bool AlCaRecoTriggerBitsRcdUpdate::addTriggerLists(const std::vector<edm::Parame
 }
 
 ///////////////////////////////////////////////////////////////////////
-bool AlCaRecoTriggerBitsRcdUpdate::addpathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd,
+bool AlCaRecoTriggerBitsRcdUpdate::addPathsFromMap(const std::vector<edm::ParameterSet> &pathsToAdd,
                                                    AlCaRecoTriggerBits &bits) const {
   TriggerMap &triggerMap = bits.m_alcarecoToTrig;
 
   // loop on PSets, each containing the key (filter name) and a vstring with triggers
-  for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToAdd.begin(); iSet != pathsToAdd.end(); ++iSet) {
-    const std::string filter(iSet->getParameter<std::string>("listName"));
+  for (const auto &iSet : pathsToAdd) {
+    const std::string filter(iSet.getParameter<std::string>("listName"));
     std::string mergedPathsInKey;
 
     for (const auto &imap : triggerMap) {
@@ -230,42 +225,32 @@ bool AlCaRecoTriggerBitsRcdUpdate::addpathsFromMap(const std::vector<edm::Parame
         mergedPathsInKey = imap.second;
     }
 
-    std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
-    std::vector<std::string> PathsInKeyTmp = PathsInKey;
-    std::vector<std::string> paths(iSet->getParameter<std::vector<std::string>>("hltPaths"));
-
-    for (const auto &ipath : paths) {
-      bool isPathsInKey = false;
-      for (auto it = PathsInKey.begin(); it != PathsInKey.end();) {
-        if ((*it) == ipath) {
-          isPathsInKey = true;
-          break;
-        } else
-          ++it;
-      }
-      if (isPathsInKey == false)
-        PathsInKeyTmp.push_back(ipath);
+    if (mergedPathsInKey.empty()) {  // nothing to add ==> misconfiguration!
+      throw cms::Exception("BadConfig") << "Didn't add any path to the map!";
     }
+
+    auto const &pathsInKey = bits.decompose(mergedPathsInKey);
+    auto const &paths = iSet.getParameter<std::vector<std::string>>("hltPaths");
+    std::set<std::string> pathsSet{pathsInKey.begin(), pathsInKey.end()};
+    std::copy(paths.begin(), paths.end(), std::inserter(pathsSet, pathsSet.end()));
+    std::vector<std::string> const newPathsInKey{pathsSet.begin(), pathsSet.end()};
 
     // We must avoid a map<string,vector<string> > in DB for performance reason,
     // so we have to merge the paths into one string that will be decoded when needed:
-    const std::string mergedPaths = bits.compose(PathsInKeyTmp);
-
-    triggerMap[filter] = mergedPaths;
+    triggerMap[filter] = bits.compose(newPathsInKey);
   }
 
   return true;
 }
 
 ///////////////////////////////////////////////////////////////////////
-bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove,
+bool AlCaRecoTriggerBitsRcdUpdate::removePathsFromMap(const std::vector<edm::ParameterSet> &pathsToRemove,
                                                       AlCaRecoTriggerBits &bits) const {
   TriggerMap &triggerMap = bits.m_alcarecoToTrig;
 
   // loop on PSets, each containing the key (filter name) and a vstring with triggers
-  for (std::vector<edm::ParameterSet>::const_iterator iSet = pathsToRemove.begin(); iSet != pathsToRemove.end();
-       ++iSet) {
-    const std::string filter(iSet->getParameter<std::string>("listName"));
+  for (const auto &iSet : pathsToRemove) {
+    const std::string filter(iSet.getParameter<std::string>("listName"));
     std::string mergedPathsInKey;
 
     for (const auto &imap : triggerMap) {
@@ -274,7 +259,7 @@ bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::Par
     }
 
     std::vector<std::string> PathsInKey = bits.decompose(mergedPathsInKey);
-    const std::vector<std::string> paths(iSet->getParameter<std::vector<std::string>>("hltPaths"));
+    const std::vector<std::string> paths(iSet.getParameter<std::vector<std::string>>("hltPaths"));
 
     for (const auto &ipath : paths) {
       for (auto it = PathsInKey.begin(); it != PathsInKey.end();) {
@@ -287,9 +272,7 @@ bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::Par
 
     // We must avoid a map<string,vector<string> > in DB for performance reason,
     // so we have to merge the paths into one string that will be decoded when needed:
-    const std::string mergedPaths = bits.compose(PathsInKey);
-
-    triggerMap[filter] = mergedPaths;
+    triggerMap[filter] = bits.compose(PathsInKey);
   }
 
   return true;
@@ -297,7 +280,7 @@ bool AlCaRecoTriggerBitsRcdUpdate::removepathsFromMap(const std::vector<edm::Par
 
 ///////////////////////////////////////////////////////////////////////
 void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(const AlCaRecoTriggerBits &bitsToWrite) const {
-  edm::LogInfo("") << "Uploading to the database...";
+  edm::LogInfo("AlCaRecoTriggerBitsRcdUpdate") << "Uploading to the database...";
 
   edm::Service<cond::service::PoolDBOutputService> poolDbService;
   if (!poolDbService.isAvailable()) {
@@ -313,21 +296,22 @@ void AlCaRecoTriggerBitsRcdUpdate::writeBitsToDB(const AlCaRecoTriggerBits &bits
 
   if (poolDbService->tagInfo(recordName, tag_info)) {
     if (newHash != tag_info.lastInterval.payloadId) {
-      edm::LogInfo("") << "## Appending to existing tag...";
+      edm::LogInfo("AlCaRecoTriggerBitsRcdUpdate") << "## Appending to existing tag...";
       poolDbService->forceInit();
       poolDbService->appendSinceTime(newHash, firstRunIOV_, recordName);
     } else {
-      edm::LogInfo("") << "## Skipping update since hash is the same...";
+      edm::LogInfo("AlCaRecoTriggerBitsRcdUpdate") << "## Skipping update since hash is the same...";
     }
 
   } else {
-    edm::LogInfo("") << "## Creating new tag...";
+    edm::LogInfo("AlCaRecoTriggerBitsRcdUpdate") << "## Creating new tag...";
     poolDbService->forceInit();
     poolDbService->createNewIOV(newHash, firstRunIOV_, recordName);
   }
   poolDbService->commitTransaction();
 
-  edm::LogInfo("") << "...done for runs " << firstRunIOV_ << " to " << lastRunIOV_ << " (< 0 meaning infinity)!";
+  edm::LogInfo("AlCaRecoTriggerBitsRcdUpdate")
+      << "...done for runs " << firstRunIOV_ << " to " << lastRunIOV_ << " (< 0 meaning infinity)!";
 }
 
 //define this as a plug-in

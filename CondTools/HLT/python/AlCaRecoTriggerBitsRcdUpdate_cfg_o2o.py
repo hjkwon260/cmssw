@@ -19,6 +19,7 @@
 
 import FWCore.ParameterSet.Config as cms
 import FWCore.ParameterSet.VarParsing as VarParsing 
+import fnmatch, subprocess, time, re
 
 process = cms.Process("UPDATEDB")
 
@@ -59,7 +60,7 @@ options.register( "firstRun",
                   )
 
 options.register( "hltKey", 
-                  "/cdaq/special/commissioning2021/CRAFT/Cosmics/V4",  #default value
+                  "/cdaq/special/PilotBeamTest2021/Collisions/V55",  #default value
                   VarParsing.VarParsing.multiplicity.singleton, 
                   VarParsing.VarParsing.varType.string,
                   "the hlt key"
@@ -73,7 +74,7 @@ options.register( "keyToModify",
                   )
 
 options.register('pathsToModify',
-                 'HLT_*ZeroBias_part*_v*', #default value
+                 'HLT_ZeroBias_part*_v*', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Comma-separated list of paths to be modified")
@@ -96,17 +97,50 @@ process.AlCaRecoTriggerBitsRcdUpdate.firstRunIOV = options.firstRun # docu see..
 # If you want to start from scratch, comment the next line:
 process.AlCaRecoTriggerBitsRcdUpdate.startEmpty = False
 
-# add paths if hlt key has 'special', remove those for the other cases
-runMode = options.hltKey.split('/')[2]
-if(runMode=='special'):
-  print(runMode,'mode: adding',options.pathsToModify,'to',options.keyToModify,'if not exist')
+start = time.time()
+
+print('HLT menu:', options.hltKey)
+
+cmd = "hltGetConfiguration adg:%s" %options.hltKey
+p = subprocess.Popen( cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT )
+out, err = p.communicate()
+
+# if hltGetConfiguration fails
+if p.returncode != 0:
+    raise Exception(out.decode('utf-8'))
+
+# get part where pds:paths are defined
+is_block = False
+lines=''
+for line in out.decode('utf-8').split('\n'):
+  if is_block and 'process.' in line:
+    break  
+  if 'process.datasets' in line:
+    is_block = True
+  if is_block:
+    lines += line+"\n"
+
+exec(lines)
+
+pds = process.datasets._Parameterizable__parameterNames
+for pd in pds:
+  paths = sorted( path for path in process.datasets.__dict__[pd] )
+  if (re.search("^ZeroBias\d{1,2}", pd)): # only search for 'ZeroBiasX'
+    pattern = 'HLT_*ZeroBias*part*'
+    matching = fnmatch.filter(paths, pattern)
+    if matching:
+      print(pd, ':', *matching)
+
+# add partitioned paths in ZeroBiasX if exist, remove those for the other cases
+if 'matching' in locals():
+  print('adding',options.pathsToModify,'to',options.keyToModify,'if not exist')
   process.AlCaRecoTriggerBitsRcdUpdate.pathsToAdd = [
         cms.PSet(listName = cms.string(options.keyToModify),
                  hltPaths = cms.vstring(options.pathsToModify.split(','))
                  )
   ]
 else: 
-  print('not special mode, removing',options.pathsToModify,'from',options.keyToModify,'if exist') 
+  print('removing',options.pathsToModify,'from',options.keyToModify,'if exist') 
   process.AlCaRecoTriggerBitsRcdUpdate.pathsToRemove = [
         cms.PSet(listName = cms.string(options.keyToModify),
                  hltPaths = cms.vstring(options.pathsToModify.split(','))
@@ -143,3 +177,6 @@ process.PoolDBOutputService = cms.Service("PoolDBOutputService",
 
 # Put module in path:
 process.p = cms.Path(process.AlCaRecoTriggerBitsRcdUpdate)
+
+end = time.time()
+print('Elapsed time for O2O: ', end - start, 'sec')

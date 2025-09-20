@@ -1,3 +1,6 @@
 <lcgdict>
  <class name="Metadata" />
+ <class name="MetadataWrapper" />
+ <class name="MetadataCollection" />
+ <class name="MetadataWrapperCollection" />
 </lcgdict>  

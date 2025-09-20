@@ -19,4 +19,17 @@ private:
     COND_SERIALIZABLE;
 };
 
+class MetadataCollection {
+public:
+    MetadataCollection() {}
+
+    void addModel(const Metadata& m) { models_.push_back(m); }
+    const std::vector<Metadata>& models() const { return models_; }
+
+private:
+    std::vector<Metadata> models_;
+
+    COND_SERIALIZABLE;
+};
+
 #endif

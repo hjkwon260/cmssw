@@ -1,6 +1,8 @@
 <export>
 </export>
 <library name="CondToolsMLObjectsplugins" file="*.cc">
+  <use name="json"/>
+  <use name="CondFormats/DataRecord"/>	
   <use name="CondFormats/MLObjects"/>
   <use name="FWCore/Framework"/>
   <use name="FWCore/ParameterSet"/>

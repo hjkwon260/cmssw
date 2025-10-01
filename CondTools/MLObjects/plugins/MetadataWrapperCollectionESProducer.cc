@@ -27,11 +27,12 @@ private:
 };
 
 MetadataWrapperCollectionESProducer::MetadataWrapperCollectionESProducer(const edm::ParameterSet& iConfig) {
-  auto cc = setWhatProduced(this);
 
   std::string label = iConfig.getParameter<std::string>("label");
   std::string jsonFile = iConfig.getParameter<std::string>("jsonFile");
-  // token_ = cc.consumes();
+
+  auto cc = setWhatProduced(this, label);
+
   token_ = cc.consumesFrom<MetadataCollection, MetadataRcd>(edm::ESInputTag{"", label});
 
   // Load JSON file once at construction
@@ -44,32 +45,26 @@ MetadataWrapperCollectionESProducer::MetadataWrapperCollectionESProducer(const e
 }
 
 std::unique_ptr<MetadataWrapperCollection> MetadataWrapperCollectionESProducer::produce(const MetadataWrapperRcd& iRecord) {
-  // auto const& cond = iRecord.getTransientHandle(token_);  // not working
-  // auto const& cond = iRecord.getRecord<MetadataRcd>().get(token_);
-   MetadataCollection const&  cond = iRecord.get(token_);
+
+  MetadataCollection const&  cond = iRecord.get(token_);
 
   auto wrapper = std::make_unique<MetadataWrapperCollection>();
 
-  std::cout << cond.models().at(0).value() << std::endl;
-
-  std::cout << "Print something" << std::endl;
-
   for (auto const& m : cond.models()) {
-      // std::string modelPath = m.info() + "model_path";
-      // std::string preprocPath = m.info() + "preproc_path";
-      std::string modelPath = "";
-      std::string preprocPath = "";
+
+      std::string model_path = "";
+      std::string preproc_path = "";
 
       for (auto const& entry : json_) {
-          if (entry["model_name"] == m.info() &&
-          entry["version"] == std::to_string(m.value())) {
-          modelPath = entry["model_path"].get<std::string>();
-          preprocPath = entry["preprocessing_path"].get<std::string>();
+          if (entry["model_name"] == m.model_name() &&
+          entry["version"] == std::to_string(m.version())) {
+          model_path = entry["model_path"].get<std::string>();
+          preproc_path = entry["preprocessing_path"].get<std::string>();
           break;
         }
       }
 
-      wrapper->add(MetadataWrapper(m.info(), std::to_string(m.value()), modelPath, preprocPath));
+      wrapper->add(MetadataWrapper(m.model_name(), std::to_string(m.version()), model_path, preproc_path));
   }
 
 
@@ -77,4 +72,4 @@ std::unique_ptr<MetadataWrapperCollection> MetadataWrapperCollectionESProducer::
 
 }
 
-DEFINE_FWK_EVENTSETUP_MODULE(MetadataWrapperCollectionESProducer); // compiled
+DEFINE_FWK_EVENTSETUP_MODULE(MetadataWrapperCollectionESProducer);

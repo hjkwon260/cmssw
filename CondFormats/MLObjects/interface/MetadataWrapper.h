@@ -7,21 +7,21 @@
 class MetadataWrapper {
 public:
     MetadataWrapper() = default;
-    MetadataWrapper(std::string name, std::string version,
-                    std::string modelPath, std::string preprocPath)
-        : name_(name), version_(version),
-          modelPath_(modelPath), preprocPath_(preprocPath) {}
+    MetadataWrapper(std::string model_name, std::string version,
+                    std::string model_path, std::string preproc_path)
+        : model_name_(model_name), version_(version),
+          model_path_(model_path), preproc_path_(preproc_path) {}
 
-    std::string name() const { return name_; }
+    std::string model_name() const { return model_name_; }
     std::string version() const { return version_; }
-    std::string modelPath() const { return modelPath_; }
-    std::string preprocessingPath() const { return preprocPath_; }
+    std::string model_path() const { return model_path_; }
+    std::string preprocessing_path() const { return preproc_path_; }
 
 private:
-    std::string name_;
+    std::string model_name_;
     std::string version_;
-    std::string modelPath_;
-    std::string preprocPath_;
+    std::string model_path_;
+    std::string preproc_path_;
 
     COND_SERIALIZABLE;
 

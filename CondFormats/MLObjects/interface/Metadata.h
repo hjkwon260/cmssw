@@ -6,15 +6,16 @@
 
 class Metadata {
 public:
-    Metadata() : value_(0) {}
-    Metadata(int v, std::string t) : value_(v), info_(t) {}
+    Metadata() {}
+    Metadata(std::string model_name, int version) : model_name_(model_name), version_(version) {}
 
-    int value() const { return value_; }
-    std::string info() const { return info_; }
+    std::string model_name() const { return model_name_; }
+    int version() const { return version_; }
 
 private:
-    int value_;
-    std::string info_;
+
+    std::string model_name_;
+    int version_;
 
     COND_SERIALIZABLE;
 };
@@ -23,7 +24,7 @@ class MetadataCollection {
 public:
     MetadataCollection() {}
 
-    void addModel(const Metadata& m) { models_.push_back(m); }
+    void add_model(const Metadata& m) { models_.push_back(m); }
     const std::vector<Metadata>& models() const { return models_; }
 
 private:

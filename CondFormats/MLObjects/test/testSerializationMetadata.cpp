@@ -3,5 +3,4 @@
 
 int main() { 
 	testSerialization<Metadata>(); 
-	testSerialization<MetadataCollection>();
 }

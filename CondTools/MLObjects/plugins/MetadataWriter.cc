@@ -18,25 +18,29 @@ private:
   void beginJob() override;
   void analyze(const edm::Event&, const edm::EventSetup&) override {}
 
-  const std::vector<edm::ParameterSet> models_;  
+  const edm::ParameterSet model_;
+  unsigned long long since_;
 };
 
 MetadataWriter::MetadataWriter(const edm::ParameterSet& iConfig)
-    : models_(iConfig.getParameter<std::vector<edm::ParameterSet>>("models")) {}
+    : model_(iConfig.getParameter<edm::ParameterSet>("model")),
+      since_(iConfig.getParameter<unsigned long long>("since")) {}
 
 void MetadataWriter::beginJob() {
 
-    MetadataCollection coll;
+    const auto& ps = model_;
+    Metadata metadata;
+    int version = ps.getParameter<int>("version");
+    std::string model_name = ps.getParameter<std::string>("model_name");
+    std::string hash = ps.exists("hash") ? ps.getParameter<std::string>("hash") : "";
 
-    for (auto const& ps : models_) {
-        int version = ps.getParameter<int>("version");
-        std::string model_name = ps.getParameter<std::string>("model_name");
-        coll.add_model(Metadata(model_name, version));
-    }
+    metadata.set_model_name(model_name);
+    metadata.set_version(version);
+    metadata.set_hash(hash);
 
-  edm::Service<cond::service::PoolDBOutputService> pool;
-  if (pool.isAvailable())
-        pool->writeOneIOV(coll, pool->currentTime(), "MetadataRcd");
+    edm::Service<cond::service::PoolDBOutputService> pool;
+    if (pool.isAvailable())
+        pool->writeOneIOV(metadata, since_, "MetadataRcd");
 }
 
 #include "FWCore/Framework/interface/MakerMacros.h"

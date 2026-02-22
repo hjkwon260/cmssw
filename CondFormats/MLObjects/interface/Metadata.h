@@ -7,28 +7,21 @@
 class Metadata {
 public:
     Metadata() {}
-    Metadata(std::string model_name, int version) : model_name_(model_name), version_(version) {}
+    Metadata(std::string model_name, int version, std::string hash) : model_name_(model_name), version_(version), hash_(hash) {}
 
     std::string model_name() const { return model_name_; }
     int version() const { return version_; }
+    std::string hash() const { return hash_; }
+
+    void set_model_name(const std::string& name) { model_name_ = name; }
+    void set_version(int version) { version_ = version; }
+    void set_hash(const std::string& hash) { hash_ = hash; }
 
 private:
 
     std::string model_name_;
     int version_;
-
-    COND_SERIALIZABLE;
-};
-
-class MetadataCollection {
-public:
-    MetadataCollection() {}
-
-    void add_model(const Metadata& m) { models_.push_back(m); }
-    const std::vector<Metadata>& models() const { return models_; }
-
-private:
-    std::vector<Metadata> models_;
+    std::string hash_;
 
     COND_SERIALIZABLE;
 };

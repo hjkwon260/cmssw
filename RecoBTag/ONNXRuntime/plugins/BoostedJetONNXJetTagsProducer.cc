@@ -1,4 +1,4 @@
-#include "FWCore/Framework/interface/Frameworkfwd.h"
+/**/#include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
@@ -16,6 +16,13 @@
 #include "PhysicsTools/ONNXRuntime/interface/ONNXRuntime.h"
 
 #include "RecoBTag/FeatureTools/interface/deep_helpers.h"
+
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/Framework/interface/ESConsumesCollector.h"
+
+#include "CondFormats/MLObjects/interface/MetadataWrapper.h"
+#include "CondFormats/DataRecord/interface/MetadataWrapperRcd.h"
 
 #include <iostream>
 #include <fstream>
@@ -57,13 +64,17 @@ private:
   bool debug_ = false;
   bool produceValueMap_;
   edm::Handle<edm::View<reco::Jet>> jets;
+
+  edm::ESGetToken<MetadataWrapper, MetadataWrapperRcd> esToken_;
 };
 
 BoostedJetONNXJetTagsProducer::BoostedJetONNXJetTagsProducer(const edm::ParameterSet &iConfig, const ONNXRuntime *cache)
     : src_(consumes<TagInfoCollection>(iConfig.getParameter<edm::InputTag>("src"))),
       flav_names_(iConfig.getParameter<std::vector<std::string>>("flav_names")),
       debug_(iConfig.getUntrackedParameter<bool>("debugMode", false)),
-      produceValueMap_(iConfig.getUntrackedParameter<bool>("produceValueMap", false)) {
+      produceValueMap_(iConfig.getUntrackedParameter<bool>("produceValueMap", false)),
+      esToken_(esConsumes<MetadataWrapper, MetadataWrapperRcd>(edm::ESInputTag("", iConfig.getUntrackedParameter<std::string>("label"))))
+{
   if (produceValueMap_) {
     jet_token_ = consumes<edm::View<reco::Jet>>(iConfig.getParameter<edm::InputTag>("jets"));
   }
@@ -138,6 +149,7 @@ void BoostedJetONNXJetTagsProducer::fillDescriptions(edm::ConfigurationDescripti
                                          "probQCDothers",
                                      });
   desc.add<edm::InputTag>("jets", edm::InputTag(""));
+  desc.addOptionalUntracked<std::string>("label", "");
   desc.addOptionalUntracked<bool>("produceValueMap", false);
   desc.addOptionalUntracked<bool>("debugMode", false);
 
@@ -155,6 +167,27 @@ void BoostedJetONNXJetTagsProducer::produce(edm::Event &iEvent, const edm::Event
   iEvent.getByToken(src_, tag_infos);
   if (produceValueMap_) {
     jets = iEvent.getHandle(jet_token_);
+  }
+
+  printf("%s\n", "//----------In EDProducer -----------//");
+  const auto& meta = iSetup.getData(esToken_);
+
+  std::cout << meta.model_name() << " "
+                            << meta.version() << " "
+                            << meta.model_path() << " "
+                            << meta.preprocessing_path() 
+                            << std::endl;
+
+  auto runtime = meta.onnxRuntime();
+
+  if (runtime) {
+      std::cout << " -> ONNX session loaded, output nodes: ";
+      for (auto& n : runtime->getOutputNames()) {
+          std::cout << n << " ";
+      }
+      std::cout << std::endl;
+  } else {
+      std::cout << " -> runtime NOT loaded!" << std::endl;
   }
 
   // initialize output collection

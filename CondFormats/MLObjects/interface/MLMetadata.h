@@ -1,13 +1,13 @@
-#ifndef CondFormats_MLObjects_Metadata_h
-#define CondFormats_MLObjects_Metadata_h
+#ifndef CondFormats_MLObjects_MLMetadata_h
+#define CondFormats_MLObjects_MLMetadata_h
 
 // -*- C++ -*-
 //
 // Package:     CondFormats/MLObjects
-// Class  :     Metadata
+// Class  :     MLMetadata
 //
 /**
-  \class Metadata Metadata.h "CondFormats/MLObjects/interface/Metadata.h"
+  \class MLMetadata MLMetadata.h "CondFormats/MLObjects/interface/MLMetadata.h"
 
   Description: Persistent condition object containing core ML model identifiers.
                Stores the unique model name, versioning, and integrity hash 
@@ -20,10 +20,10 @@
 #include <string>
 #include "CondFormats/Serialization/interface/Serializable.h"
 
-class Metadata {
+class MLMetadata {
 public:
-  Metadata() {}
-  Metadata(std::string model_name, int version, std::string hash)
+  MLMetadata() {}
+  MLMetadata(std::string model_name, int version, std::string hash)
       : model_name_(model_name), version_(version), hash_(hash) {}
 
   std::string model_name() const { return model_name_; }

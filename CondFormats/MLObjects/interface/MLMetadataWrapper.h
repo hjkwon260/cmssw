@@ -1,13 +1,13 @@
-#ifndef CondFormats_MLObjects_MetadataWrapper_h
-#define CondFormats_MLObjects_MetadataWrapper_h
+#ifndef CondFormats_MLObjects_MLMetadataWrapper_h
+#define CondFormats_MLObjects_MLMetadataWrapper_h
 
 // -*- C++ -*-
 //
 // Package:     CondFormats/MLObjects
-// Class  :     MetadataWrapper
+// Class  :     MLMetadataWrapper
 //
 /**
-  \class MetadataWrapper MetadataWrapper.h "CondFormats/MLObjects/interface/MetadataWrapper.h"
+  \class MLMetadataWrapper MLMetadataWrapper.h "CondFormats/MLObjects/interface/MLMetadataWrapper.h"
 
   Description: persistent wrapper for ML model metadata and ONNX Runtime integration.
                Extends basic Condition Database fields (name, version, hash) with 
@@ -23,10 +23,10 @@
 #include "CondFormats/Serialization/interface/Serializable.h"
 #include "PhysicsTools/ONNXRuntime/interface/ONNXRuntime.h"
 
-class MetadataWrapper {
+class MLMetadataWrapper {
 public:
-  MetadataWrapper() = default;
-  MetadataWrapper(
+  MLMetadataWrapper() = default;
+  MLMetadataWrapper(
       std::string model_name, std::string version, std::string hash, std::string model_path, std::string preproc_path)
       : model_name_(model_name), version_(version), hash_(hash), model_path_(model_path), preproc_path_(preproc_path) {}
 
